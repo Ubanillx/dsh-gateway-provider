@@ -177,7 +177,7 @@ the bridge is lifted from the official `dsh-llm-pi-ai` adapter.
 ## Development
 
 ```sh
-git clone https://github.com/Luck9Star/dsh-gateway-provider
+git clone <repo-url>        # the checkout being installed / developed
 cd dsh-gateway-provider
 pnpm install               # pi-ai (pinned) + @deepseek-ai/* profile symlinks, via the prepare hook
 pnpm run test:client       # settings-UI render, both locales

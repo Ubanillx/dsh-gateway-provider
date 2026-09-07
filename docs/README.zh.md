@@ -110,7 +110,7 @@ dsh 自带的适配器一个 provider 一个。如果你的模型都在网关后
 ## 开发
 
 ```sh
-git clone https://github.com/Luck9Star/dsh-gateway-provider
+git clone <仓库地址>          # 待安装/开发的检出
 cd dsh-gateway-provider
 pnpm install               # 一条命令搞定:pi-ai 固定副本 + @deepseek-ai/* 软链(prepare 钩子自动执行)
 pnpm run test:client       # 设置页渲染测试，双语言
