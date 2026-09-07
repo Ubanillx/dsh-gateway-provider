@@ -75,18 +75,19 @@ Prereqs: `pnpm` (≥ 10); on Windows, Git Bash (`bash` on `PATH`, the repo's
      Desktop: `%APPDATA%\dsh-desktop\harness\profiles\web`;
    - add to the profile `package.json` `dependencies`:
      `"dsh-gateway-provider": "link:<abs-path-to-clone>"`;
-   - register the plugin row once, by appending to the profile's
-     `cordis.patch.yml`:
+   - register the plugin **once** by listing the package in the profile's
+     `dsh.profile.bundles`:
 
-     ```yaml
-     - insert:
-         - id: llm-newapi
-           name: 'dsh-gateway-provider'
+     ```json
+     "bundles": [ "...", "dsh-gateway-provider" ]
      ```
 
-     (Equivalent: list the package under the profile's `dsh.profile.bundles`
-     instead — its own bundle patch then supplies the row. Never do both: a
-     duplicate `llm-newapi` row is a loader error.)
+     The plugin's own `cordis.patch.yml` (via its `dsh.bundle.patch`
+     manifest) then supplies the `llm-newapi` row. Do **not** also insert a
+     manual `- id: llm-newapi` row into the profile's `cordis.patch.yml` —
+     the row would be defined twice and the harness refuses to boot with
+     `duplicate loader entry id: llm-newapi` (DSH Desktop then auto-removes
+     the plugin through plugin recovery).
    - run pnpm inside the profile dir: `pnpm install`. DSH Desktop must use its
      own runner (store pinning + EPERM recovery):
      `node "<desktop>\resources\app\node_modules\node\bin\node.exe" "<harness>\.desktop-bin\pnpm-runner.mjs" "<desktop>\resources\app\node_modules\pnpm\bin\pnpm.cjs" install`
@@ -108,7 +109,7 @@ Prereqs: `pnpm` (≥ 10); on Windows, Git Bash (`bash` on `PATH`, the repo's
 
 Iterating = editing the clone and restarting the harness; requests then run
 the new code (`lib/client.js` is the shipped UI artifact — no build step).
-Uninstall: remove the patch row and the dependency, then re-run
+Uninstall: remove the bundle entry and the dependency, then re-run
 `pnpm install` in the profile.
 
 ## Daily use
@@ -197,11 +198,11 @@ plugin↔harness boundary passes plain data (`GenerateOptions` in, dsh
 the plugin's pi-ai copy and the harness's own coexist safely in one process.
 
 Developing from a checkout is the install loop above: edit the clone and
-restart the harness. Keep exactly one wiring path — a manual patch row without
-`dsh.profile.bundles` membership, or bundle membership without a manual row
-(a duplicate `llm-newapi` row is a loader error). Offline suites:
-`pnpm run test:client`, `test:urls`, `test:schema`, `test:errors`; `smoke`
-needs a live gateway key.
+restart the harness. Keep the single registration described there — the
+package listed in `dsh.profile.bundles`, no manual row in the profile's
+`cordis.patch.yml` (a duplicate `llm-newapi` row is a loader error). Offline
+suites: `pnpm run test:client`, `test:urls`, `test:schema`, `test:errors`;
+`smoke` needs a live gateway key.
 
 ## References & credits
 

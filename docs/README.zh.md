@@ -43,15 +43,13 @@ dsh 自带的适配器一个 provider 一个。如果你的模型都在网关后
 
    - profile 目录：CLI 为 `$DSH_HOME/profiles/<name>`（通常是 `web`）；Desktop 为 `%APPDATA%\dsh-desktop\harness\profiles\web`；
    - 在 profile 的 `package.json` `dependencies` 加：`"dsh-gateway-provider": "link:<仓库绝对路径>"`；
-   - 注册插件行，只加一处——往 profile 的 `cordis.patch.yml` 追加：
+   - 注册插件（只注册一次）：把包名加进 profile 的 `dsh.profile.bundles`：
 
-     ```yaml
-     - insert:
-         - id: llm-newapi
-           name: 'dsh-gateway-provider'
+     ```json
+     "bundles": [ "...", "dsh-gateway-provider" ]
      ```
 
-     （等价做法：把包名加进 profile 的 `dsh.profile.bundles`，行由插件自带 bundle patch 提供。两种只能二选一：`llm-newapi` 重复注册 = 加载器报错。）
+     插件自带的 `cordis.patch.yml`（其 `dsh.bundle.patch` 清单）会自动提供 `llm-newapi` 行。**不要**再往 profile 的 `cordis.patch.yml` 里手工插 `- id: llm-newapi` 行——同一行会被定义两次，harness 会以 `duplicate loader entry id: llm-newapi` 拒绝启动（DSH Desktop 随后会用插件恢复机制自动卸载该插件）。
    - 在 profile 目录里跑 pnpm：`pnpm install`。DSH Desktop 必须走它自己的 runner（store 固定 + EPERM 恢复）：
      `node "<desktop>\resources\app\node_modules\node\bin\node.exe" "<harness>\.desktop-bin\pnpm-runner.mjs" "<desktop>\resources\app\node_modules\pnpm\bin\pnpm.cjs" install`
 
@@ -61,7 +59,7 @@ dsh 自带的适配器一个 provider 一个。如果你的模型都在网关后
 
 5. **提供 API key** —— 把凭据写入 harness 凭据文件（默认变量名 `NEWAPI_API_KEY`；CLI `~/.dsh/.credentials.yaml`；Desktop `%APPDATA%\dsh-desktop\harness\.credentials.yaml`），或让设置页代写。网关卡片点 **Test**，预期 `✓ Connected — N models`；不用 newapi 公有云就先在卡片上填 **Base URL**。
 
-迭代 = 改克隆目录 → 重启 harness 即生效（`lib/client.js` 就是实际 UI 产物，无构建步骤）。卸载：移除补丁行和依赖，在 profile 里重跑 `pnpm install`。
+迭代 = 改克隆目录 → 重启 harness 即生效（`lib/client.js` 就是实际 UI 产物，无构建步骤）。卸载：把包名从 `dsh.profile.bundles` 移除、删掉依赖，在 profile 里重跑 `pnpm install`。
 
 ## 日常使用
 
@@ -122,7 +120,7 @@ pnpm run smoke             # 真实网关往返（需要真 key）
 
 `@earendil-works/pi-ai` 是精确锁定的直接依赖，与 harness 自带的 pi-ai 版本解耦：网关模型目录（思考档位、各家 compat，如智谱 GLM 的 `supportsDeveloperRole: false`）不再随 harness 升级被动漂移——harness 旧目录里缺的模型不会再退化请求编码。插件与 harness 的边界只传纯数据（`GenerateOptions` 进、dsh `StreamChunk` 出，`lib/pi-bridge.js` 从不把 pi-ai 对象泄漏到边界外），因此插件副本与 harness 自带副本可在同一进程内安全共存。
 
-从本地检出开发 = 上面"源码安装"那套流程的迭代循环：改检出 → 重启 harness 即生效。接线只保留一条路径（要么 profile 补丁行、要么 `dsh.profile.bundles` 成员——两条都做会出现重复 `llm-newapi` 行 = 加载器报错）。离线测试：`pnpm run test:client`、`test:urls`、`test:schema`、`test:errors`；`smoke` 需要真实网关 key。
+从本地检出开发 = 上面"源码安装"那套流程的迭代循环：改检出 → 重启 harness 即生效。按上文保持**单次注册**（包名在 `dsh.profile.bundles` 里，profile 自己的 `cordis.patch.yml` 不再手工插行——重复 `llm-newapi` 行 = 加载器报错）。离线测试：`pnpm run test:client`、`test:urls`、`test:schema`、`test:errors`；`smoke` 需要真实网关 key。
 
 ## 参考与致谢
 

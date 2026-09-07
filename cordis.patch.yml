@@ -1,9 +1,10 @@
 # dsh-gateway-provider bundle patch: inserts the plugin row into the profile
 # roster. Applied as a profile bundle layer (the `dsh.bundle.patch` manifest
-# field) when the package is listed in a profile's `dsh.profile.bundles`. A
-# source install may equivalently insert this same row via the profile's own
-# cordis.patch.yml (see README "Install from GitHub source"); never register
-# the row twice (duplicate id = loader error).
+# field) when the package is listed in a profile's `dsh.profile.bundles` —
+# the recommended single registration for a source install (see README
+# "Install from GitHub source"). Do not also insert a second `llm-newapi`
+# row through the profile's own cordis.patch.yml: duplicate id = loader
+# error (DSH Desktop then auto-removes the plugin via plugin recovery).
 #
 # The row is a bare plugin by package name: the host half (exports ".") runs
 # in the DSH process and registers the `newapi` provider route on ctx.llm.
