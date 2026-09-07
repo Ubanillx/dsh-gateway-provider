@@ -161,6 +161,7 @@ the same keys). The frequently used ones:
 | --- | --- |
 | Picker route exists but zero models | The plugin can't read your model list. Check the gateway base URL; try `catalogMode: "management"` for newapi gateways that restrict `/v1/models`. |
 | `401` / auth errors on every request | Key missing or wrong: check the badge in Settings → Gateway Models, or `NEWAPI_API_KEY` in `~/.dsh/.credentials.yaml`. |
+| Settings → Gateway Models stays blank, or boot shows `NewAPI 加载失败 … no API key` | An older build threw during boot-time model enumeration when no key was set, which also skipped the settings registration. Current builds report zero models instead: page renders with the `⚠ No key set` badge — enter the key there (or write the credential / export `NEWAPI_API_KEY`), then the route populates. |
 | A model's context window looks wrong | models.dev had no match. Edit the model on the settings page (or a `models:` override). |
 | Wrong format answers / tool calls flaky for one model | That model is routed over a protocol it handles poorly. Pin `protocol` on the model (`openai`, `openai-response`, `anthropic`, `gemini`). |
 | Custom gateway with separate endpoints | Use `flavor: "custom"` and set `openaiURL` / `responsesURL` / `anthropicURL` explicitly. |

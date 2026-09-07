@@ -97,6 +97,7 @@ dsh 自带的适配器一个 provider 一个。如果你的模型都在网关后
 | --- | --- |
 | 路由有了但模型为零 | 插件读不到模型列表。检查网关 base URL；newapi 网关若限制 `/v1/models`，试试 `catalogMode: "management"`。 |
 | 每次请求都 `401` / 鉴权错误 | key 缺失或不对：看 Settings → Gateway Models 的徽标，或 `~/.dsh/.credentials.yaml` 里的 `NEWAPI_API_KEY`。 |
+| 设置 → 网关模型 空白，或启动时报 `NewAPI 加载失败 … no API key` | 旧构建在没配 key 时于启动枚举阶段抛错，连带设置段也没注册成功。当前构建改为返回 0 个模型：页面正常渲染并带 `⚠ No key set` 徽标——在页面里填 key（或写凭据 / 导出 `NEWAPI_API_KEY`）后路由即填充。 |
 | 某模型的上下文窗口看着不对 | models.dev 没匹配上。在设置页编辑该模型（或写 `models:` 覆盖）。 |
 | 单个模型工具调用不稳、格式怪 | 该模型被路由到了它处理不好的协议。在模型上钉死 `protocol`（`openai`、`openai-response`、`anthropic`、`gemini`）。 |
 | 自定义网关各协议端点分开 | 用 `flavor: "custom"`，显式填 `openaiURL` / `responsesURL` / `anthropicURL`。 |
