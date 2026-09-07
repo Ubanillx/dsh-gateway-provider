@@ -23,24 +23,45 @@ dsh 自带的适配器一个 provider 一个。如果你的模型都在网关后
 - DeepSeek Harness (dsh)，带 `web` profile（设置页面是 web UI 扩展；provider 本身任何 profile 都能用）。
 - 一个网关 API key（比如 newapi 令牌）。
 
-## 安装
+## 从 GitHub 源码安装（写给执行者/AI 的步骤）
 
-```sh
-# 1. 安装插件（dsh plugin add 底层会执行 pnpm add）
-dsh plugin --profile web add dsh-gateway-provider
+装本仓库检出本身，不装 npm 发布版：npm 版本可能滞后（发布构建早于未发布的修复）。以下按"谁执行谁读"写——路径、命令、检查点齐全。
+前置：pnpm（≥ 10）；Windows 上还要 Git Bash（`bash` 在 `PATH` 里——仓库 `prepare` 钩子要跑 `scripts/link.sh`）。
 
-# 2. 存好你的 key —— 二选一：
-#    a) dsh 凭据文件（推荐；以 0600 权限创建，热加载）
-echo "NEWAPI_API_KEY: sk-REPLACE_WITH_YOUR_KEY" >> ~/.dsh/.credentials.yaml
-#    b) 或在启动 dsh 的 shell 里 export：
-#       export NEWAPI_API_KEY=sk-REPLACE_WITH_YOUR_KEY
+1. **克隆并装好仓库依赖** —— 仓库必须自带锁定的 pi-ai；harness 同名包软链到宿主 profile，保证进程内单实例：
 
-# 3. 重启，打开设置页
-dsh --profile web
-# → Settings → Gateway Models
-```
+   ```sh
+   git clone <仓库地址> dsh-gateway-provider
+   cd dsh-gateway-provider
+   DSH_HOME=<harness-home> pnpm install
+   ```
 
-**预期结果：** 模型选择器多出一条 "NewAPI" 路由，列出网关的对话模型，最新在前。在网关卡片上点 **Test** —— 应显示 `✓ Connected — N models`。用的不是 newapi 公有云？先在卡片上改 **Base URL**（或配置里的 `baseURL`）指向你自己的网关地址。
+   `<harness-home>`：命令行版 dsh 为 `~/.dsh`；DSH Desktop 为 `%APPDATA%\dsh-desktop\harness`。`DSH_HOME` 指向它后，`prepare` 钩子会把 `node_modules/@deepseek-ai/*` 软链进该 harness 的共享树（单实例）。
+   装完检查：`node_modules/@earendil-works/pi-ai/package.json` 存在；`node_modules/@deepseek-ai/cordis` 是链接（Windows 上是目录 junction）。没有软链权限时，把失败的每条链接改成 junction：`cmd /c mklink /J <链接> <目标>`。
+
+2. **接线目标 profile**（先备份它的 `package.json`）：
+
+   - profile 目录：CLI 为 `$DSH_HOME/profiles/<name>`（通常是 `web`）；Desktop 为 `%APPDATA%\dsh-desktop\harness\profiles\web`；
+   - 在 profile 的 `package.json` `dependencies` 加：`"dsh-gateway-provider": "link:<仓库绝对路径>"`；
+   - 注册插件行，只加一处——往 profile 的 `cordis.patch.yml` 追加：
+
+     ```yaml
+     - insert:
+         - id: llm-newapi
+           name: 'dsh-gateway-provider'
+     ```
+
+     （等价做法：把包名加进 profile 的 `dsh.profile.bundles`，行由插件自带 bundle patch 提供。两种只能二选一：`llm-newapi` 重复注册 = 加载器报错。）
+   - 在 profile 目录里跑 pnpm：`pnpm install`。DSH Desktop 必须走它自己的 runner（store 固定 + EPERM 恢复）：
+     `node "<desktop>\resources\app\node_modules\node\bin\node.exe" "<harness>\.desktop-bin\pnpm-runner.mjs" "<desktop>\resources\app\node_modules\pnpm\bin\pnpm.cjs" install`
+
+3. **重启 harness** —— Desktop：完全退出再打开应用（harness 是壳的子进程）；CLI：重启 `dsh`。
+
+4. **验证** —— `Settings → Gateway Models` 出现管理 UI；模型选择器多出 "NewAPI" 路由。失败时看 harness 日志（Desktop：`%APPDATA%\dsh-desktop\logs\harness.log`；插件行 `llm-newapi`，包名 `dsh-gateway-provider`）。
+
+5. **提供 API key** —— 把凭据写入 harness 凭据文件（默认变量名 `NEWAPI_API_KEY`；CLI `~/.dsh/.credentials.yaml`；Desktop `%APPDATA%\dsh-desktop\harness\.credentials.yaml`），或让设置页代写。网关卡片点 **Test**，预期 `✓ Connected — N models`；不用 newapi 公有云就先在卡片上填 **Base URL**。
+
+迭代 = 改克隆目录 → 重启 harness 即生效（`lib/client.js` 就是实际 UI 产物，无构建步骤）。卸载：移除补丁行和依赖，在 profile 里重跑 `pnpm install`。
 
 ## 日常使用
 
@@ -101,8 +122,7 @@ pnpm run smoke             # 真实网关往返（需要真 key）
 
 `@earendil-works/pi-ai` 是精确锁定的直接依赖，与 harness 自带的 pi-ai 版本解耦：网关模型目录（思考档位、各家 compat，如智谱 GLM 的 `supportsDeveloperRole: false`）不再随 harness 升级被动漂移——harness 旧目录里缺的模型不会再退化请求编码。插件与 harness 的边界只传纯数据（`GenerateOptions` 进、dsh `StreamChunk` 出，`lib/pi-bridge.js` 从不把 pi-ai 对象泄漏到边界外），因此插件副本与 harness 自带副本可在同一进程内安全共存。
 
-从本地检出开发：把 profile 的 `package.json` 指向
-`"dsh-gateway-provider": "link:/绝对/路径"`，然后在 profile 里重跑 `pnpm install`。**不要**再往 profile 自己的 `cordis.patch.yml` 里加 `id: llm-newapi` 行 —— bundle patch 已提供（重复行 = 加载器报错）。
+从本地检出开发 = 上面"源码安装"那套流程的迭代循环：改检出 → 重启 harness 即生效。接线只保留一条路径（要么 profile 补丁行、要么 `dsh.profile.bundles` 成员——两条都做会出现重复 `llm-newapi` 行 = 加载器报错）。离线测试：`pnpm run test:client`、`test:urls`、`test:schema`、`test:errors`；`smoke` 需要真实网关 key。
 
 ## 参考与致谢
 

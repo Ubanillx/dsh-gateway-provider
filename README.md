@@ -43,28 +43,73 @@ itself instead:
   extension; the provider itself works in any profile).
 - A gateway API key (e.g. a newapi token).
 
-## Install
+## Install from GitHub source (agent instructions)
 
-```sh
-# 1. Install the plugin (dsh plugin add runs pnpm add under the hood)
-dsh plugin --profile web add dsh-gateway-provider
+Install the checkout itself, not the npm build: the published package may lag
+this repo (registry builds predate unreleased fixes). The steps below are
+written for whoever performs the install — exact paths, commands and checks.
+Prereqs: `pnpm` (≥ 10); on Windows, Git Bash (`bash` on `PATH`, the repo's
+`prepare` hook runs `scripts/link.sh`).
 
-# 2. Store your key — pick ONE of:
-#    a) the dsh credentials file (recommended; created with mode 0600, hot-reloaded)
-echo "NEWAPI_API_KEY: sk-REPLACE_WITH_YOUR_KEY" >> ~/.dsh/.credentials.yaml
-#    b) or export it in the shell you launch dsh from:
-#       export NEWAPI_API_KEY=sk-REPLACE_WITH_YOUR_KEY
+1. **Clone and install the repo** — it must own its pinned pi-ai; harness
+   packages are linked to the hosting profile so the process keeps one copy:
 
-# 3. Restart and open the settings page
-dsh --profile web
-# → Settings → Gateway Models
-```
+   ```sh
+   git clone <repo-url> dsh-gateway-provider
+   cd dsh-gateway-provider
+   DSH_HOME=<harness-home> pnpm install
+   ```
 
-**Expected result:** the model picker gains a "NewAPI" route listing your
-gateway's chat models, newest first. Click **Test** on the gateway card —
-it should answer `✓ Connected — N models`. Not using the public newapi
-cloud? Set **Base URL** on the card (or `baseURL` in config) to your own
-gateway address first.
+   `<harness-home>` = `~/.dsh` for plain dsh CLI, or
+   `%APPDATA%\dsh-desktop\harness` for DSH Desktop; pointing `DSH_HOME` there
+   makes the `prepare` hook symlink `node_modules/@deepseek-ai/*` into that
+   harness's shared tree (single instance). After install, check that
+   `node_modules/@earendil-works/pi-ai/package.json` exists and
+   `node_modules/@deepseek-ai/cordis` is a link (directory junction on
+   Windows). Where symlinks are not permitted, recreate each failed link as a
+   junction: `cmd /c mklink /J <link> <target>`.
+
+2. **Wire the profile** (back up its `package.json` first):
+
+   - profile dir: `$DSH_HOME/profiles/<name>` (CLI; usually `web`);
+     Desktop: `%APPDATA%\dsh-desktop\harness\profiles\web`;
+   - add to the profile `package.json` `dependencies`:
+     `"dsh-gateway-provider": "link:<abs-path-to-clone>"`;
+   - register the plugin row once, by appending to the profile's
+     `cordis.patch.yml`:
+
+     ```yaml
+     - insert:
+         - id: llm-newapi
+           name: 'dsh-gateway-provider'
+     ```
+
+     (Equivalent: list the package under the profile's `dsh.profile.bundles`
+     instead — its own bundle patch then supplies the row. Never do both: a
+     duplicate `llm-newapi` row is a loader error.)
+   - run pnpm inside the profile dir: `pnpm install`. DSH Desktop must use its
+     own runner (store pinning + EPERM recovery):
+     `node "<desktop>\resources\app\node_modules\node\bin\node.exe" "<harness>\.desktop-bin\pnpm-runner.mjs" "<desktop>\resources\app\node_modules\pnpm\bin\pnpm.cjs" install`
+
+3. **Restart the harness** — Desktop: fully quit and relaunch the app (the
+   harness is a child of the shell); CLI: restart `dsh`.
+
+4. **Verify** — `Settings → Gateway Models` renders the management UI; the
+   model picker gains a "NewAPI" route. On failure check the harness log
+   (Desktop: `%APPDATA%\dsh-desktop\logs\harness.log`; the plugin row is
+   `llm-newapi`, package `dsh-gateway-provider`).
+
+5. **Provide the API key** — write the credential (default env var name
+   `NEWAPI_API_KEY`) into the harness credentials file (`~/.dsh/.credentials.yaml`;
+   Desktop: `%APPDATA%\dsh-desktop\harness\.credentials.yaml`) or let the
+   settings page store it. Open the gateway card → **Test** — expect
+   `✓ Connected — N models`. Not the public newapi cloud? Set **Base URL**
+   on the card first.
+
+Iterating = editing the clone and restarting the harness; requests then run
+the new code (`lib/client.js` is the shipped UI artifact — no build step).
+Uninstall: remove the patch row and the dependency, then re-run
+`pnpm install` in the profile.
 
 ## Daily use
 
@@ -151,11 +196,12 @@ plugin↔harness boundary passes plain data (`GenerateOptions` in, dsh
 `StreamChunk`s out; `lib/pi-bridge.js` never leaks pi-ai objects across), so
 the plugin's pi-ai copy and the harness's own coexist safely in one process.
 
-Developing from a checkout: point the profile's `package.json` at
-`"dsh-gateway-provider": "link:/abs/path"` and re-run `pnpm install` in the
-profile. Do **not** also add an `id: llm-newapi` row to the profile's own
-`cordis.patch.yml` — the bundle patch already provides it (duplicate row =
-loader error).
+Developing from a checkout is the install loop above: edit the clone and
+restart the harness. Keep exactly one wiring path — a manual patch row without
+`dsh.profile.bundles` membership, or bundle membership without a manual row
+(a duplicate `llm-newapi` row is a loader error). Offline suites:
+`pnpm run test:client`, `test:urls`, `test:schema`, `test:errors`; `smoke`
+needs a live gateway key.
 
 ## References & credits
 

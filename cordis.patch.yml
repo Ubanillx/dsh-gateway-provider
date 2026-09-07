@@ -1,7 +1,9 @@
 # dsh-gateway-provider bundle patch: inserts the plugin row into the profile
 # roster. Applied as a profile bundle layer (the `dsh.bundle.patch` manifest
-# field) over dsh-base; activate with
-#   dsh plugin --profile <name> add dsh-gateway-provider
+# field) when the package is listed in a profile's `dsh.profile.bundles`. A
+# source install may equivalently insert this same row via the profile's own
+# cordis.patch.yml (see README "Install from GitHub source"); never register
+# the row twice (duplicate id = loader error).
 #
 # The row is a bare plugin by package name: the host half (exports ".") runs
 # in the DSH process and registers the `newapi` provider route on ctx.llm.
