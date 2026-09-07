@@ -47,7 +47,7 @@ dsh --profile web
 一切都在 **Settings → Gateway Models**：
 
 - **加更多网关** —— "Add Gateway"，选模板（LiteLLM、Higress、OpenAI 兼容，或按协议分别填 URL 的完全自定义），填 base URL 和 key 的环境变量名，Test、Sync。每个网关在选择器里有自己的路由。
-- **管好模型列表** —— 非对话模型（图像 / 语音 / 向量 / 重排……）默认被正则排除；任意模型可隐藏、可改名；网关藏起来的模型可手工添加；每个模型的协议、上下文窗口、输出上限、推理档位都可改。
+- **管好模型列表** —— 非对话模型（图像 / 语音 / 向量 / 重排……）默认被正则排除；任意模型可隐藏、可改名；网关藏起来的模型可手工添加；每个模型的协议、上下文窗口、输出上限、推理档位、**是否支持图片输入**都可改。目录里没有的视觉模型（或想强制关掉某模型的看图能力），把"图片输入"从"自动"改成"支持图片 / 仅文本"即可。
 - **密钥放在 dsh 凭据存储里** —— 设置页有状态徽标（`✓ Key set · NEWAPI_API_KEY` / `⚠ No key set`），也可以直接帮你把 key 写进去。
 
 ## 配置参考
@@ -61,7 +61,7 @@ dsh --profile web
 | `label` | `NewAPI` | 选择器里显示的路由名。 |
 | `flavor` | `newapi` | 仅作模板标签（`newapi` / `litellm` / `higress` / `openai-compatible` / `custom`）。 |
 | `gateways` | — | 额外网关数组：`{ id, baseURL, apiKeyEnv, label, … }`，每个成为一条 `gateway:<id>` 路由。 |
-| `models` | — | 按模型覆盖：`{ id, name, disabled, protocol, contextWindow, maxTokens, reasoningLevels }`。 |
+| `models` | — | 按模型覆盖：`{ id, name, disabled, protocol, contextWindow, maxTokens, reasoningLevels, inputModalities }`。 |
 | `useModelsDev` / `modelsUrl` | `true` / models.dev | 参数增补来源（支持 `file:` URL 离线用）。 |
 | `excludePatterns` | 图像/语音/…… | 要从选择器排除的模型 id 正则列表。 |
 | `sortModelsByRelease` | `true` | 最新模型排前面。 |

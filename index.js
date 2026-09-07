@@ -94,6 +94,11 @@ const ModelOverrideSchema = z.object({
   maxTokens: z.number().step(1).min(1),
   /** Reasoning level set (e.g. ["off","low","medium","high"]). */
   reasoningLevels: z.array(coercedString()),
+  /**
+   * Input modalities this model accepts; unset = follow the models.dev
+   * catalog (text-only when the model is unknown there).
+   */
+  inputModalities: z.array(z.union(["text", "image"])),
 });
 
 /** Gateway-type templates the settings UI offers (informational labels). */

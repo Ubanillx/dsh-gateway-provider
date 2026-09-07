@@ -119,9 +119,9 @@ for (const language of ["zh-CN", "en-US"]) {
 	collect(captured.renderer({ api }));
 	const has = (s) => texts.some((t) => t.includes(s));
 	const mustHave = language.startsWith("zh")
-		? ["网关模型管理", "默认网关", "gateway:backup", "gateway:edge", "思考级别", "已隐藏", "自定义", "API Key 变量名", "留空则继承默认网关",
+		? ["网关模型管理", "默认网关", "gateway:backup", "gateway:edge", "思考级别", "图片输入", "已隐藏", "自定义", "API Key 变量名", "留空则继承默认网关",
 			"完全自定义", "OpenAI 兼容地址", "/chat/completions 结尾", "/v1/messages 结尾", "anthropic"]
-		: ["Gateway Model Management", "Default gateway", "gateway:backup", "gateway:edge", "Reasoning levels", "hidden", "Custom", "API Key env var", "inherits the default gateway",
+		: ["Gateway Model Management", "Default gateway", "gateway:backup", "gateway:edge", "Reasoning levels", "Image input", "hidden", "Custom", "API Key env var", "inherits the default gateway",
 			"Fully custom", "OpenAI-compatible URL", "/chat/completions", "/v1/messages", "anthropic"];
 	for (const s of mustHave) if (!has(s)) problems.push("missing expected text: " + s);
 
@@ -165,6 +165,10 @@ for (const language of ["zh-CN", "en-US"]) {
 		eq("absent entry becomes custom",
 			md([{ id: "custom-1", name: "X" }], [{ id: "gpt-5.2", name: "GPT-5.2" }]),
 			[{ id: "gpt-5.2", _discoveredName: "GPT-5.2", _reasoning: false }, { id: "custom-1", name: "X", _custom: true }]);
+		// A manual image-input override survives a discovery refresh.
+		eq("inputModalities override survives refresh",
+			md([{ id: "gpt-4o", inputModalities: ["text", "image"], disabled: true }], [{ id: "gpt-4o", name: "GPT-4o", contextWindow: 128000, maxTokens: 16384, protocol: "openai", reasoning: true }]),
+			[{ id: "gpt-4o", _discoveredName: "GPT-4o", _protocol: "openai", _discoveredContext: 128000, _discoveredMax: 16384, _reasoning: true, inputModalities: ["text", "image"], disabled: true }]);
 	}
 	if (problems.length > 0) {
 		failed = true;

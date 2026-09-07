@@ -77,7 +77,10 @@ Everything lives in **Settings → Gateway Models**:
 - **Tame the model list** — non-chat models (image / speech / embedding /
   rerank …) are excluded by default regexes; hide or rename any model; add
   a custom model by hand if the gateway hides it; per-model protocol,
-  context window, output cap, and reasoning levels are all editable.
+  context window, output cap, reasoning levels, and image input are all
+  editable. A vision model missing from models.dev (or a model you want to
+  keep text-only) can be pinned via the model editor's "Image input" picker
+  (`auto` / image-capable / text-only), which writes `inputModalities`.
 - **Keys live in dsh's credential store** — the settings page shows a badge
   (`✓ Key set · NEWAPI_API_KEY` / `⚠ No key set`) and can write the key
   there for you.
@@ -95,7 +98,7 @@ the same keys). The frequently used ones:
 | `label` | `NewAPI` | Route label shown in the picker. |
 | `flavor` | `newapi` | Template label only (`newapi` / `litellm` / `higress` / `openai-compatible` / `custom`). |
 | `gateways` | — | Array of extra gateways: `{ id, baseURL, apiKeyEnv, label, … }`, each becoming a `gateway:<id>` route. |
-| `models` | — | Per-model overrides: `{ id, name, disabled, protocol, contextWindow, maxTokens, reasoningLevels }`. |
+| `models` | — | Per-model overrides: `{ id, name, disabled, protocol, contextWindow, maxTokens, reasoningLevels, inputModalities }`. |
 | `useModelsDev` / `modelsUrl` | `true` / models.dev | Parameter enrichment source (supports `file:` URLs for offline). |
 | `excludePatterns` | image/speech/… | Regex list of model ids to keep out of the picker. |
 | `sortModelsByRelease` | `true` | Newest models first. |
