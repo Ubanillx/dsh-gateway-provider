@@ -409,11 +409,17 @@ export function apply(ctx, config) {
     const connection = reqBase !== undefined
       ? { ...gw.connection, baseURL: reqBase, catalogBase: reqBase }
       : gw.connection;
-    const apiKey = request.apiKey ?? await resolveApiKey(gw.connection).catch(() => undefined);
+    const apiKey = request.apiKey ?? await resolveApiKey(gw.connection).catch((error) => {
+      console.error(`llm-newapi: discovery api key unresolved (${gw.provider}): ${error?.message ?? error}`);
+      return undefined;
+    });
     const { discoverGatewayModels } = await import("./lib/catalog.js");
     try {
-      return await discoverGatewayModels(connection, apiKey, request.signal);
-    } catch {
+      const found = await discoverGatewayModels(connection, apiKey, request.signal);
+      console.error(`llm-newapi: discovery ${gw.provider} base=${connection.baseURL} key=${apiKey ? "set" : "MISSING"} consumed=${found.length} model(s)`);
+      return found;
+    } catch (error) {
+      console.error(`llm-newapi: discovery ${gw.provider} base=${connection.baseURL} failed: ${error?.message ?? error}`);
       return [];
     }
   });
