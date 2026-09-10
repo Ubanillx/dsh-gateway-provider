@@ -178,4 +178,56 @@ for (const language of ["zh-CN", "en-US"]) {
 		console.log("[PASS] mergeDiscovered unit checks (legacy refresh / override wins / custom marking)");
 	}
 }
+
+// ---- persistable write payloads + undefined-key guards ----
+{
+	const problems = [];
+	/** Every own key (any depth) whose value is `undefined` — the shape the
+	  * settings RPC arg codec rejects, and which JSON.stringify hides. */
+	const undefinedKeys = (value, path, out) => {
+		if (value === null || typeof value !== "object") return out;
+		for (const key of Object.keys(value)) {
+			const at = path + "." + key;
+			if (value[key] === undefined) out.push(at);
+			else undefinedKeys(value[key], at, out);
+		}
+		return out;
+	};
+	const eq = (label, actual, expected) => {
+		const a = JSON.stringify(actual), e = JSON.stringify(expected);
+		if (a !== e) problems.push(label + ": got " + a + ", want " + e);
+	};
+
+	const { mergeDiscovered: md, persistable, persistableGateways: pgs } = firstModuleExports || {};
+	if (typeof persistable !== "function" || typeof pgs !== "function") {
+		problems.push("persistable / persistableGateways are not exported");
+	} else {
+		// A rendered row carries UI-local discovery keys; a write must not.
+		eq("persistable keeps only set override fields",
+			persistable({ id: "m", contextWindow: 1000, _discoveredName: "M", _protocol: undefined, _custom: true, name: "", protocol: null, reasoningLevels: [], inputModalities: [] }),
+			{ id: "m", contextWindow: 1000 });
+		eq("persistable keeps real list overrides",
+			persistable({ id: "m", inputModalities: ["text", "image"], reasoningLevels: ["off", "high"], disabled: true }),
+			{ id: "m", disabled: true, reasoningLevels: ["off", "high"], inputModalities: ["text", "image"] });
+		// The resolved settings snapshot carries schema-materialized `[]`.
+		eq("persistableGateways strips materialized [] and UI keys",
+			pgs([{ id: "newapi", baseURL: "http://x", endpointPriority: [], models: [{ id: "glm-5.1", _protocol: undefined, maxTokens: 10 }] }]),
+			[{ id: "newapi", baseURL: "http://x", models: [{ id: "glm-5.1", maxTokens: 10 }] }]);
+	}
+	if (typeof md === "function") {
+		const merged = md([{ id: "glm-5.1", reasoningLevels: [], inputModalities: [] }], [{ id: "glm-5.1", name: "GLM-5.1", contextWindow: 200000, maxTokens: 128000 }]);
+		const stray = undefinedKeys(merged, "out", []);
+		if (stray.length > 0) problems.push("mergeDiscovered owns undefined keys: " + stray.join(", "));
+		if (merged[0].reasoningLevels !== undefined || merged[0].inputModalities !== undefined) {
+			problems.push("empty-array overrides must not survive a discovery refresh: " + JSON.stringify(merged[0]));
+		}
+	}
+	if (problems.length > 0) {
+		failed = true;
+		console.error("[FAIL] persistable write-payload checks");
+		problems.forEach((p) => console.error("  - " + p));
+	} else {
+		console.log("[PASS] persistable write-payload checks (UI keys / undefined / empty arrays stripped)");
+	}
+}
 process.exit(failed ? 1 : 0);

@@ -223,7 +223,10 @@ function gatewayConnection(gw, defaults, provider, label) {
     catalogTtlMs: defaults.catalogTtlMs,
     includeChatOnly: defaults.includeChatOnly,
     excludePatterns: defaults.excludePatterns,
-    endpointPriority: gw.endpointPriority ?? defaults.endpointPriority,
+    // An empty array is "unset", not "no preference": schemastery materializes
+    // `[]` for an omitted array field, and pickModelApi with an empty priority
+    // silently ignores the documented preference order.
+    endpointPriority: Array.isArray(gw.endpointPriority) && gw.endpointPriority.length > 0 ? gw.endpointPriority : defaults.endpointPriority,
     userId: gw.userId ?? defaults.userId,
     modelOverrides: indexModelOverrides(gw.models ?? []),
     headers: defaults.headers,
@@ -274,7 +277,8 @@ export function resolveGateways(config, environment) {
     catalogTtlMs: config.catalogTtlMs ?? DEFAULT_CATALOG_TTL_MS,
     includeChatOnly: config.includeChatOnly ?? true,
     excludePatterns: config.excludePatterns ?? DEFAULT_EXCLUDE_PATTERNS,
-    endpointPriority: config.endpointPriority ?? DEFAULT_ENDPOINT_PRIORITY,
+    // `[]` from a schema-materialized default must not disable the preference order.
+    endpointPriority: Array.isArray(config.endpointPriority) && config.endpointPriority.length > 0 ? config.endpointPriority : DEFAULT_ENDPOINT_PRIORITY,
     userId: config.userId ?? "1",
     headers: config.headers,
     maxTokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
