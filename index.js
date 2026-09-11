@@ -27,11 +27,18 @@
  * @module dsh-gateway-provider
  */
 
+// `@deepseek-ai/schemastery` is declared as a peer with the `*` range on
+// purpose. The package is versioned on its own 3.x line (the harness ships
+// 3.18.2) while DSH Desktop's market compatibility check compares the range of
+// every non-cordis `@deepseek-ai/*` peer against the *DSH runtime* version
+// (`0.1.2-rc.1`), so a truthful `^3.18.1` reads as an incompatibility and the
+// plugin is offered for removal/upgrade during startup recovery. The copy that
+// matters is the harness-provided one (see scripts/link.sh): a second copy
+// installed under this package would break single-instance schema identity.
 import z from "@deepseek-ai/schemastery";
 import { LlmError, RetryPolicySchema, assertUsableApiKey, resolveRetryPolicy } from "@deepseek-ai/dsh-llm";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import { launchEnvironmentOf } from "@deepseek-ai/dsh-launch-environment";
-import { deepEqualJson, installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 import { MAX_TIMER_DELAY_MS } from "@deepseek-ai/dsh-timeout";
 import { NewapiAdapter } from "./lib/adapter.js";
 import { DEFAULT_EXCLUDE_PATTERNS, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW } from "./lib/catalog.js";
@@ -40,8 +47,14 @@ import { DEFAULT_ENDPOINT_PRIORITY, deriveProtocolURLs } from "./lib/protocols.j
 export const name = "llm-newapi";
 export const inject = ["llm"];
 
-/** User-settings namespace whose section overrides this entry. */
-const NS = settingsNamespace("llm-newapi");
+/**
+ * User-settings namespace whose section overrides this entry.
+ *
+ * A plain string: dsh 0.1.2-rc.1 removed the `settingsNamespace()` helper
+ * along with the rest of the dsh-settings free functions, and the settings
+ * service takes the namespace name directly.
+ */
+const NS = "llm-newapi";
 /** The legacy single provider route (kept for backwards compatibility). */
 export const PROVIDER = "newapi";
 /** Prefix for additional gateway routes. */
@@ -382,7 +395,7 @@ export function apply(ctx, config) {
     // Include the per-protocol bases: URL-addressed (custom) gateways may
     // share an empty plain baseURL, and URL-only edits must re-register.
     const facts = gateways.map((g) => `${g.provider}:${g.connection.baseURL}:${g.label}:${g.connection.apiBases ? JSON.stringify(g.connection.apiBases) : ""}`);
-    if (deepEqualJson(facts, directoryFacts)) return;
+    if (directoryFacts !== undefined && JSON.stringify(facts) === JSON.stringify(directoryFacts)) return;
     const entries = gateways.map((g, i) => ({
       provider: g.provider,
       displayName: g.label,
@@ -428,10 +441,26 @@ export function apply(ctx, config) {
     }
   });
 
-  installSettingsSection(ctx, NS, Config, config, {
-    setSource: (source) => {
-      current = source;
-    },
-    onChange: ensureRegistration,
+  // dsh 0.1.2-rc.1 dropped the `installSettingsSection()` free function; the
+  // section is installed through the settings service itself, which only
+  // exists once `settings` is available (same pattern as the shipped
+  // `dsh-llm-pi-ai` plugin). `installSection` calls `onChange` synchronously,
+  // so registration still happens as soon as the service arrives.
+  ctx.inject(["settings"], (settingsCtx) => {
+    settingsCtx.settings.installSection(ctx, NS, Config, config, {
+      setSource: (source) => {
+        current = source;
+      },
+      onChange: () => {
+        try {
+          ensureRegistration();
+        } catch (error) {
+          // Keep the previously registered routes: an unusable section must
+          // not take the whole plugin tree down.
+          ctx.logger.error("llm-newapi: keeping the previously registered routes after a refused settings update");
+          ctx.logger.error(error);
+        }
+      },
+    });
   });
 }

@@ -20,7 +20,7 @@ dsh 自带的适配器一个 provider 一个。如果你的模型都在网关后
 
 ## 环境要求
 
-- DeepSeek Harness (dsh)，带 `web` profile（设置页面是 web UI 扩展；provider 本身任何 profile 都能用）。
+- DeepSeek Harness (dsh) **0.1.2-rc.1**，带 `web` profile（设置页面是 web UI 扩展；provider 本身任何 profile 都能用）。宿主半边用的是该运行时的 peer API（`ToolCallId`、settings 服务的 `installSection`），客户端半边用的是它类型化的 `remote.*` 命名空间，所以 harness peer 声明为 `^0.1.2-rc.1`。
 - 一个网关 API key（比如 newapi 令牌）。
 
 ## 从 GitHub 源码安装（写给执行者/AI 的步骤）

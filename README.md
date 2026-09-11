@@ -39,8 +39,11 @@ itself instead:
 
 ## Requirements
 
-- DeepSeek Harness (dsh) with a `web` profile (the settings page is a web-UI
-  extension; the provider itself works in any profile).
+- DeepSeek Harness (dsh) **0.1.2-rc.1**, with a `web` profile (the settings
+  page is a web-UI extension; the provider itself works in any profile). The
+  host half imports that runtime's peer APIs (`ToolCallId`, the settings
+  service's `installSection`) and the client half its typed `remote.*`
+  namespaces, so the harness peers are declared as `^0.1.2-rc.1`.
 - A gateway API key (e.g. a newapi token).
 
 ## Install from GitHub source (agent instructions)
